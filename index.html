@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💬 پیام‌رسان</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Tahoma,sans-serif;background:#0d1117;color:#e6edf3;height:100vh;overflow:hidden}
+
+/* Login */
+#loginPage{display:flex;align-items:center;justify-content:center;height:100vh;padding:20px}
+.login-box{background:#1c2128;border:1px solid #30363d;border-radius:16px;padding:40px;width:100%;max-width:400px}
+.login-box h1{text-align:center;margin-bottom:8px;font-size:24px}
+.login-box p{text-align:center;color:#8b949e;margin-bottom:25px;font-size:14px}
+.login-box input{width:100%;padding:13px;border:1px solid #30363d;border-radius:10px;background:#0d1117;color:#e6edf3;font-size:15px;font-family:inherit;outline:none;margin-bottom:15px}
+.login-box input:focus{border-color:#58a6ff}
+.login-box button{width:100%;padding:13px;background:#1f6feb;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s}
+.login-box button:hover{background:#58a6ff}
+.login-box button:disabled{opacity:.5;cursor:not-allowed}
+.hint{margin-top:15px;padding:12px;background:#0d1117;border-radius:8px;font-size:12px;color:#8b949e;text-align:center;line-height:1.7}
+
+/* Chat */
+#chatPage{display:none;flex-direction:column;height:100vh}
+.header{background:#161b22;border-bottom:1px solid #30363d;padding:15px 20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.header-info h2{font-size:16px}
+.header-info p{font-size:12px;color:#8b949e;margin-top:3px}
+.header-right{display:flex;align-items:center;gap:12px}
+.online{display:flex;align-items:center;gap:6px;font-size:12px;color:#3fb950}
+.dot{width:8px;height:8px;border-radius:50%;background:#3fb950;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.logout{background:transparent;border:1px solid #f85149;color:#f85149;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit}
+.logout:hover{background:#f85149;color:#fff}
+
+.messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:12px}
+.msg{max-width:75%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.5;word-wrap:break-word;animation:slideIn .2s ease}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.msg.own{background:#1f6feb;color:#fff;align-self:flex-start;border-bottom-left-radius:3px}
+.msg.other{background:#21262d;color:#e6edf3;align-self:flex-end;border-bottom-right-radius:3px}
+.msg .meta{font-size:10px;opacity:.7;margin-top:4px}
+.msg.own .meta{text-align:left}
+.msg.other .meta{text-align:right}
+.system{text-align:center;font-size:12px;color:#6e7681;padding:5px;font-style:italic}
+
+.input-area{background:#161b22;border-top:1px solid #30363d;padding:15px 20px;display:flex;gap:10px}
+.input-area input{flex:1;padding:12px 16px;border:1px solid #30363d;border-radius:24px;background:#0d1117;color:#e6edf3;font-size:14px;font-family:inherit;outline:none}
+.input-area input:focus{border-color:#58a6ff}
+.input-area button{padding:12px 24px;background:#1f6feb;color:#fff;border:none;border-radius:24px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:.15s}
+.input-area button:hover{background:#58a6ff}
+
+.loading{text-align:center;color:#8b949e;font-size:13px;padding:20px}
+
+::-webkit-scrollbar{width:8px}
+::-webkit-scrollbar-track{background:#0d1117}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#484f58}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+  <div class="login-box">
+    <h1>💬 پیام‌رسان</h1>
+    <p>وارد شو و شروع کن به چت</p>
+    <input type="text" id="usernameInput" placeholder="اسمت چیه؟" maxlength="20">
+    <input type="text" id="roomInput" placeholder="اسم اتاق" value="general" maxlength="20">
+    <button onclick="joinChat()" id="joinBtn">ورود به چت</button>
+    <div class="hint">
+      💡 <strong>راهنما:</strong><br>
+      با رفیقت <strong>اسم اتاق یکسان</strong> بذارید تا همدیگه رو ببینید<br>
+      مثلاً هر دو: <code>ali-matin</code>
+    </div>
+  </div>
+</div>
+
+<!-- CHAT -->
+<div id="chatPage">
+  <div class="header">
+    <div class="header-info">
+      <h2 id="roomName">اتاق</h2>
+      <p id="userName">-</p>
+    </div>
+    <div class="header-right">
+      <div class="online"><div class="dot"></div><span>آنلاین</span></div>
+      <button class="logout" onclick="logout()">خروج</button>
+    </div>
+  </div>
+
+  <div class="messages" id="messages">
+    <div class="loading">در حال بارگذاری پیام‌ها...</div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="messageInput" placeholder="پیامت رو بنویس..." maxlength="500" onkeypress="if(event.key==='Enter')sendMessage()">
+    <button onclick="sendMessage()">ارسال</button>
+  </div>
+</div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getDatabase, ref, push, onValue, serverTimestamp, query, limitToLast, off }
+  from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+// ============================================================
+// ⚠️ این بخش رو با اطلاعات پروژه‌ی خودت عوض کن!
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSy...",
+  authDomain: "my-chat-xxxxx.firebaseapp.com",
+  databaseURL: "https://my-chat-xxxxx-default-rtdb.firebaseio.com",
+  projectId: "my-chat-xxxxx",
+  storageBucket: "my-chat-xxxxx.appspot.com",
+  messagingSenderId: "123456789",
+  appId: "1:123456789:web:abcdef"
+};
+// ============================================================
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+let myUsername = "";
+let myRoom = "";
+let unsubscribe = null;
+
+window.joinChat = function() {
+  const username = document.getElementById("usernameInput").value.trim();
+  const room = document.getElementById("roomInput").value.trim().toLowerCase().replace(/[^a-z0-9\-_]/g, "");
+
+  if(!username){
+    alert("اسمت رو وارد کن!");
+    return;
+  }
+  if(!room){
+    alert("اسم اتاق رو وارد کن!");
+    return;
+  }
+
+  myUsername = username;
+  myRoom = room;
+
+  // برو به صفحه‌ی چت
+  document.getElementById("loginPage").style.display = "none";
+  document.getElementById("chatPage").style.display = "flex";
+  document.getElementById("roomName").textContent = "# " + room;
+  document.getElementById("userName").textContent = "👤 " + username;
+  document.getElementById("messageInput").focus();
+
+  // ذخیره توی localStorage برای بار بعد
+  localStorage.setItem("chat_username", username);
+  localStorage.setItem("chat_room", room);
+
+  // پیام خوش‌آمد
+  push(ref(db, "rooms/" + room + "/messages"), {
+    type: "system",
+    text: username + " وارد شد",
+    time: serverTimestamp()
+  });
+
+  // گوش دادن به پیام‌های جدید
+  listenMessages();
+};
+
+function listenMessages(){
+  const messagesRef = query(
+    ref(db, "rooms/" + myRoom + "/messages"),
+    limitToLast(100)
+  );
+
+  // پاک کردن قبلی
+  if(unsubscribe) unsubscribe();
+
+  unsubscribe = onValue(messagesRef, (snapshot) => {
+    const messagesDiv = document.getElementById("messages");
+    messagesDiv.innerHTML = "";
+
+    if(!snapshot.exists()){
+      messagesDiv.innerHTML = '<div class="loading">هنوز پیامی نیست. اولین پیام رو تو بفرست! 🚀</div>';
+      return;
+    }
+
+    snapshot.forEach((child) => {
+      const msg = child.val();
+      renderMessage(msg, messagesDiv);
+    });
+
+    scrollDown();
+  });
+}
+
+function renderMessage(msg, container){
+  if(msg.type === "system"){
+    const div = document.createElement("div");
+    div.className = "system";
+    div.textContent = "⏰ " + msg.text;
+    container.appendChild(div);
+    return;
+  }
+
+  const div = document.createElement("div");
+  const isOwn = msg.username === myUsername;
+
+  div.className = "msg " + (isOwn ? "own" : "other");
+
+  const textDiv = document.createElement("div");
+  textDiv.textContent = msg.text;
+
+  const metaDiv = document.createElement("div");
+  metaDiv.className = "meta";
+  metaDiv.textContent = msg.username + " · " + (msg.timeText || "—");
+
+  div.appendChild(textDiv);
+  div.appendChild(metaDiv);
+  container.appendChild(div);
+}
+
+window.sendMessage = function(){
+  const input = document.getElementById("messageInput");
+  const text = input.value.trim();
+  if(!text) return;
+
+  const now = new Date();
+  const timeText = now.getHours().toString().padStart(2, "0") + ":" + now.getMinutes().toString().padStart(2, "0");
+
+  push(ref(db, "rooms/" + myRoom + "/messages"), {
+    type: "message",
+    username: myUsername,
+    text: text,
+    time: serverTimestamp(),
+    timeText: timeText
+  });
+
+  input.value = "";
+  input.focus();
+};
+
+window.logout = function(){
+  if(unsubscribe) unsubscribe();
+
+  // پیام خروج
+  push(ref(db, "rooms/" + myRoom + "/messages"), {
+    type: "system",
+    text: myUsername + " خارج شد",
+    time: serverTimestamp()
+  });
+
+  myUsername = "";
+  myRoom = "";
+
+  document.getElementById("chatPage").style.display = "none";
+  document.getElementById("loginPage").style.display = "flex";
+  document.getElementById("messages").innerHTML = "";
+};
+
+function scrollDown(){
+  const m = document.getElementById("messages");
+  setTimeout(() => { m.scrollTop = m.scrollHeight; }, 50);
+}
+
+// اگه قبلاً لاگین کرده، خودکار پر کن
+window.addEventListener("load", () => {
+  const savedUser = localStorage.getItem("chat_username");
+  const savedRoom = localStorage.getItem("chat_room");
+  if(savedUser) document.getElementById("usernameInput").value = savedUser;
+  if(savedRoom) document.getElementById("roomInput").value = savedRoom;
+});
+</script>
+
+</body>
+</html>
